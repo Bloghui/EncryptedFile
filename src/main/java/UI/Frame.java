@@ -1,11 +1,20 @@
 package UI;
+import Util.Encrypt;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 
 /**
  * @author lihui
@@ -23,7 +32,14 @@ public class Frame extends JFrame{
     private JButton btn_decode;
     private JTextArea txt_File;
     private listener listener;
+    private String context;
+    private String encryptContext;
+    private File defaultDirectory;
+    private  File defaultFile;
     public Frame() {
+       defaultDirectory=new File("target/classes");
+         defaultFile=new File(defaultDirectory,"/test.txt");
+
         listener=new listener();
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setBounds(100, 100, 758, 584);
@@ -32,15 +48,12 @@ public class Frame extends JFrame{
         setContentPane(contentPane);
         contentPane.setLayout(null);
 
-        JPanel panel = new JPanel();
-        panel.setBounds(10, 10, 411, 491);
-        this.add(panel);
-        panel.setLayout(null);
+        JScrollPane scrollPane = new JScrollPane();
+        scrollPane.setBounds(10, 10, 416, 490);
+        contentPane.add(scrollPane);
 
         txt_File = new JTextArea();
-        txt_File.setBounds(10, 10, 391, 481);
-        //panel.setViewportView(textField);
-        panel.add(txt_File);
+        scrollPane.setViewportView(txt_File);
 
         JPanel panel_1 = new JPanel();
         panel_1.setBounds(431, 10, 303, 491);
@@ -97,25 +110,73 @@ public class Frame extends JFrame{
 
         @Override
         public void actionPerformed(ActionEvent e) {
-           if(e.getSource()==btn_OpenFile){
-               try {
-                   btn_openFile();
-               } catch (IOException ex) {
-                   throw new RuntimeException(ex);
-               }
-           }
+            if (e.getSource() == btn_OpenFile) {
+                try {
+                    btn_openFile();
+                } catch (FileNotFoundException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+            else if(e.getSource()==btn_encrypted){
+                String key = Encrypt.generateAESKey();
+                String iv = Encrypt.generateAESIv();
+                txt_command.setText(key);
+                textField.setText(key);
+                try {
+                    encryptContext = Encrypt.encryptAES(context.getBytes(),key,iv);
+                    txt_File.setText(encryptContext);
+                    File file=new File(defaultDirectory,"encrypt(密文).txt");
+                    BufferedWriter writer=new BufferedWriter(new FileWriter(file));
+                    writer.write(encryptContext);
+                    writer.close();
+                } catch (NoSuchPaddingException ex) {
+                    throw new RuntimeException(ex);
+                } catch (NoSuchAlgorithmException ex) {
+                    throw new RuntimeException(ex);
+                } catch (InvalidKeyException ex) {
+                    throw new RuntimeException(ex);
+                } catch (BadPaddingException ex) {
+                    throw new RuntimeException(ex);
+                } catch (IllegalBlockSizeException ex) {
+                    throw new RuntimeException(ex);
+                } catch (InvalidAlgorithmParameterException ex) {
+                    throw new RuntimeException(ex);
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+            else if(e.getSource()==btn_OpenFile01){
+                try {
+                    txt_File.setText("");
+                    btn_openFile();
+                } catch (FileNotFoundException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+            else if(e.getSource()==btn_decode) {
+                String iv=Encrypt.generateAESIv();
+                String key=textField.getText();
+                if(key.equals("")||key==null)
+                    JOptionPane.showMessageDialog(null,"口令为空","错误",JOptionPane.WARNING_MESSAGE);
+                else {
+                    try {
+                        context = Encrypt.decryptAES(encryptContext.getBytes(), key, iv);
+                        txt_File.setText(context);
+                    }  catch (Exception e1) {
+                        JOptionPane.showMessageDialog(null,"解密错误","错误",JOptionPane.WARNING_MESSAGE);
+                    }
+                }
+            }
         }
-
-        public void btn_openFile() throws IOException {
+        public void btn_openFile() throws FileNotFoundException {
             JFileChooser fileChooser = new JFileChooser();
-            //默认目录
-            String defaultDirectory = "d:\\";
-            //默认文件名
-            String defaultFilename = "prc.txt";
             //设置默认目录
-            fileChooser.setCurrentDirectory(new File(defaultDirectory));
-            //设置默认文件名
-            fileChooser.setSelectedFile(new File(defaultFilename));
+            fileChooser.setCurrentDirectory(defaultDirectory);
+            fileChooser.setSelectedFile(defaultFile);
+            FileNameExtensionFilter filter = new FileNameExtensionFilter("文本文件", "txt");
+            fileChooser.setFileFilter(filter);
+            System.out.println(defaultDirectory.isDirectory());
+            System.out.println(defaultDirectory.getAbsolutePath());
             int option = fileChooser.showOpenDialog(null);
             if (option == JFileChooser.APPROVE_OPTION) {
                 System.out.println(fileChooser.getSelectedFile().getName());
@@ -133,14 +194,15 @@ public class Frame extends JFrame{
                     // 拼接换行符
                     sb.append(temp + "\n");
                 }
-                txt_File.setText(String.valueOf(sb));
+                context = String.valueOf(sb);
+                txt_File.setText(context);
 
             }
         }
     }
-
     public static void main(String[] args) {
        Frame frame=new Frame();
        frame.setVisible(true);
+
     }
 }
